@@ -1,0 +1,193 @@
+version: '3'
+
+services:
+ dgc-issuance-db:
+    image: library/postgres:9.6
+    container_name: dgc-issuance-service-postgres
+    ports:
+      - 5000:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      restart: unless-stopped
+    networks:
+      internal:
+
+
+ local-proxy:
+    build: local-proxy
+    image: local-issuance-proxy
+    container_name: local-issuance-proxy
+    volumes:
+      - ./certs:/app/certs
+    environment:
+      - PORT=7000
+      - TARGET=lacpass.create.cl
+      - CERT=/app/certs/CL/tls_key_store.p12
+      - PASSPHRASE=dgcg-p4ssw0rd
+    networks:
+      internal:
+
+ dgc-issuance-service:
+    build: dgca-issuance-service
+    image: dgca-issuance-service
+    container_name: dgc-issuance-service
+    healthcheck:
+      test: "curl --fail --silent localhost:8081/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    volumes:
+     - ./certs:/app/certs
+    ports:
+      - 8001:8081
+    environment:
+      - SERVER_PORT=8081
+      - SPRING_PROFILES_ACTIVE=cloud
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://dgc-issuance-service-postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - DGC_GATEWAY_CONNECTOR_ENDPOINT=http://local-proxy:7000
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PATH=/app/certs/CL/tls_trust_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PATH=/app/certs/CL/upload_key_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_ALIAS=upload_key
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PATH=/app/certs/CL/ta.jks
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_ALIAS=trustanchor
+      - ISSUANCE_KEYSTOREFILE=/app/certs/CL/firmasalud.jks
+      - ISSUANCE_KEYSTOREPASSWORD=dgcg-p4ssw0rd
+      - ISSUANCE_PRIVATEKEYPASSWORD=dgcg-p4ssw0rd
+      - ISSUANCE_CERTALIAS=firmasalud
+    depends_on:
+      dgc-issuance-db:
+        condition: service_healthy
+    networks:
+      internal:
+    restart: unless-stopped
+
+ dgc-businessrule-db:
+    image: library/postgres:9.6
+    container_name: dgca-businessrule-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    ports:
+      - 5002:5432
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    restart: unless-stopped
+    networks:
+      internal:
+
+ dgc-businessrule-service:
+    build: dgca-businessrule-service
+    image: eu-digital-green-certificates/dgca-businessrule-service
+    container_name: dgca-businessrule-service
+    healthcheck:
+      test: "curl --fail --silent localhost:8082/actuator/health | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    ports:
+      - 8002:8082
+    environment:
+      - SERVER_PORT=8082
+      - SPRING_PROFILES_ACTIVE=cloud
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://dgca-businessrule-db:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - DGC_GATEWAY_CONNECTOR_ENDPOINT=http://local-proxy:7000
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PATH=file:/app/certs/CL/tls_trust_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PATH=file:/app/certs/CL/tls_key_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_ALIAS=upload_key
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PATH=file:/app/certs/ta.jks
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_ALIAS=trustanchor
+    depends_on:
+      dgc-businessrule-db:
+        condition: service_healthy
+    networks:
+      internal:
+ 
+ dgc-verifier-service-postgres:
+    image: library/postgres:9.6
+    container_name: dgc-verifier-service-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    ports:
+      - 5005:5432
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    restart: unless-stopped
+    networks:
+      internal:
+
+ dgca-verifier:
+    build: dgca-verifier-service
+    image: dgca-verifier-service
+    container_name: dgc-verifier-service
+    ports:
+      - 8083:8080
+    volumes:
+      - ./certs:/ec/prod/app/san/dgc
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=cloud
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://dgc-verifier-service-postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - DGC_GATEWAY_CONNECTOR_ENDPOINT=http://local-proxy:7000
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PATH=file:/ec/prod/app/san/dgc/CL/tls_trust_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSTRUSTSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_ALIAS=tls_key
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PATH=file:/ec/prod/app/san/dgc/CL/tls_key_store.p12
+      - DGC_GATEWAY_CONNECTOR_TLSKEYSTORE_PASSWORD=dgcg-p4ssw0rd
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_ALIAS=trustanchor
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PATH=file:/ec/prod/app/san/dgc/ta.jks
+      - DGC_GATEWAY_CONNECTOR_TRUSTANCHOR_PASSWORD=dgcg-p4ssw0rd
+    depends_on:
+      - dgc-verifier-service-postgres
+    networks:
+      internal:
+
+ dgc-issuance-web:
+    build: dgca-issuance-web
+    image: dgca-issuance-web/dgca-issuance-web
+    container_name: dgc-issuance-web
+    hostname: dgc-issuance-web
+    ports:
+    - 8080:8080
+    depends_on:
+      - dgc-businessrule-service
+      - dgc-issuance-service
+    environment:
+    - SERVER_PORT=8080
+    - DGCA_ISSUANCE_SERVICE_URL=http://dgc-issuance-service:8081
+    - DGCA_BUSINESSRULE_SERVICE_URL=http://dgc-businessrule-service:8082
+    networks:
+      internal:
+    restart: on-failure:30
+
+networks:
+  internal:
