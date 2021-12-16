@@ -1,0 +1,15 @@
+[submodule "dgca-verifier-service"]
+	path = dgca-verifier-service
+	url = https://github.com/eu-digital-green-certificates/dgca-verifier-service
+[submodule "dgca-issuance-service"]
+	path = dgca-issuance-service
+	url = https://github.com/eu-digital-green-certificates/dgca-issuance-service
+[submodule "dgca-issuance-web"]
+	path = dgca-issuance-web
+	url = https://github.com/eu-digital-green-certificates/dgca-issuance-web
+[submodule "dgca-businessrule-service"]
+	path = dgca-businessrule-service
+	url = https://github.com/eu-digital-green-certificates/dgca-businessrule-service
+[submodule "dgc-gateway"]
+	path = dgc-gateway
+	url = https://github.com/eu-digital-green-certificates/dgc-gateway

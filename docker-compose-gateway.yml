@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql/mysql-server:5.7
+    ports:
+      - 4000:3306
+    environment:
+      - MYSQL_DATABASE=dgc
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_USER=dgc_adm
+      - MYSQL_PASSWORD=admin
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      persistence:
+
+  proxy:
+    build: gateway-proxy
+    image: gateway-proxy
+    ports:
+      - 9090:9090
+    volumes:
+      - ./certs:/app/certs
+    environment:
+      - HOSTNAME=localhost
+      - PORT=9090
+      - KEY_DIRECTORY=/app/certs/key_ta.pem
+      - CERT_DIRECTORY=/app/certs/cert_ta.pem
+      - TARGET=http://dgc-gateway:8080
+    depends_on:
+      - dgc-gateway
+    networks:
+      backend:
+
+
+  dgc-gateway:
+    build: dgc-gateway
+    image: dgc-gateway
+    volumes:
+      - ./certs:/ec/prod/app/san/dgc
+    ports:
+      - 5000:8080
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=mysql,docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/dgc
+      - SPRING_DATASOURCE_USERNAME=dgc_adm
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - DGC_TRUSTANCHOR_KEYSTOREPATH=/ec/prod/app/san/dgc/ta.jks
+      - DGC_TRUSTANCHOR_KEYSTOREPASS=dgcg-p4ssw0rd
+      - DGC_TRUSTANCHOR_CERTIFICATEALIAS=dgcg_trust_anchor
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      backend:
+      persistence:
+
+networks:
+  persistence:
+  backend:
