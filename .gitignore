@@ -1,8 +1,10 @@
 .idea
 
-certs
+certs/*
 local-gateway/node_modules
 local-gateway/package-lock.json
 gateway-proxy/node_modules
 gateway-proxy/package-lock.json
 node_modules
+
+!certs/*.sh
