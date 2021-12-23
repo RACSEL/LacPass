@@ -63,3 +63,9 @@ openssl req -x509 -new -days 365 -newkey ec:<(openssl ecparam -name prime256v1) 
 keytool -import -file cert_ta.pem -noprompt -storepass $PASSWORD -alias trustanchor -keystore ta.jks
 
 
+# SIGNED DSC CMS
+openssl x509 -outform der -in $COUNTRY_CODE/DSCcert.pem -out $COUNTRY_CODE/cert.der
+
+openssl cms -sign -nodetach -in $COUNTRY_CODE/cert.der -signer $COUNTRY_CODE/cert_upload.pem -inkey $COUNTRY_CODE/key_upload.pem -out $COUNTRY_CODE/signed.der -outform DER -binary
+
+openssl base64 -in $COUNTRY_CODE/signed.der -out $COUNTRY_CODE/cms.b64 -e -A
