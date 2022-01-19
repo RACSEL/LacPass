@@ -8,3 +8,4 @@ gateway-proxy/package-lock.json
 node_modules
 
 !certs/*.sh
+!certs/ta.jks
