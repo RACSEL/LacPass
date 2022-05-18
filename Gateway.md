@@ -30,6 +30,12 @@ The country Chile (CL) is included in the gateway for testing purposes. The foll
 | ----- | ----- |
 | ![QR](https://raw.githubusercontent.com/RACSEL/LacPass/main/webpage/images/gateway_valid_qr.jpg) | ![Result](https://raw.githubusercontent.com/RACSEL/LacPass/main/webpage/images/gateway_valid_test.jpg) |
 
+### Invalid QR code sample (Vaccination date is in the future)
+
+| QR Code                                                                                                   | Expected Result                                                                                                 |
+|-----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| ![QR](https://raw.githubusercontent.com/RACSEL/LacPass/main/webpage/images/gateway_invalid_future_qr.jpg) | ![Result](https://raw.githubusercontent.com/RACSEL/LacPass/main/webpage/images/gateway_invalid_future_test.jpg) |
+
 ### Invalid QR code sample
 
 | QR Code | Expected Result |
